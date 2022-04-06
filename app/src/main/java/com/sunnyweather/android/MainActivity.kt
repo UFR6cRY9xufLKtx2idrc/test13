@@ -1,128 +1,164 @@
 package com.sunnyweather.android
 
+import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
+import android.os.Build
 import android.os.Bundle
 import android.text.Html
-import android.util.Log
+import android.view.*
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.afollestad.materialdialogs.MaterialDialog
+import com.afollestad.materialdialogs.customview.customView
 import com.angcyo.tablayout.delegate2.ViewPager2Delegate
+import com.blankj.utilcode.util.*
+import com.sunnyweather.android.logic.model.UpdateInfo
 import com.sunnyweather.android.logic.model.UserInfo
-import com.sunnyweather.android.ui.area.AreaFragment
+import com.sunnyweather.android.ui.area.AreaPopup
 import com.sunnyweather.android.ui.area.AreaSingleFragment
 import com.sunnyweather.android.ui.follows.FollowsFragment
 import com.sunnyweather.android.ui.home.HomeFragment
+import com.sunnyweather.android.ui.login.LoginActivity
 import com.sunnyweather.android.ui.login.LoginViewModel
 import com.sunnyweather.android.ui.search.SearchActivity
-import kotlinx.android.synthetic.main.activity_main.*
-
-import android.view.*
-import android.widget.CompoundButton
-import androidx.core.view.GravityCompat
-import com.afollestad.materialdialogs.MaterialDialog
-import com.afollestad.materialdialogs.customview.customView
-import com.blankj.utilcode.util.*
-import com.mikepenz.iconics.typeface.library.googlematerial.GoogleMaterial
-import com.mikepenz.materialdrawer.iconics.iconicsIcon
-import com.mikepenz.materialdrawer.interfaces.OnCheckedChangeListener
-import com.mikepenz.materialdrawer.model.*
-import com.mikepenz.materialdrawer.model.interfaces.*
-
-import com.sunnyweather.android.logic.model.UpdateInfo
-import com.sunnyweather.android.ui.login.LoginActivity
 import com.sunnyweather.android.ui.setting.SettingActivity
 import com.umeng.analytics.MobclickAgent
-import kotlinx.android.synthetic.main.activity_liveroom.*
+import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.dialog_update.*
+import com.sunnyweather.android.ui.about.AboutActvity
+import com.blankj.utilcode.util.ToastUtils
+
+import android.graphics.Bitmap
+import com.lxj.xpopup.XPopup
+import moe.feng.alipay.zerosdk.AlipayZeroSdk
+import kotlinx.android.synthetic.main.dialog_donate.*
+
 
 class MainActivity : AppCompatActivity(), AreaSingleFragment.FragmentListener {
     private val viewModel by lazy { ViewModelProvider(this).get(LoginViewModel::class.java) }
-    private lateinit var areaFragment: AreaFragment
+    private lateinit var areaPopup : AreaPopup
     private lateinit var viewPager: ViewPager2
     private var isVersionCheck = false
     private lateinit var mMenu: Menu
     private var themeActived = R.style.SunnyWeather
+    private var autoDark = true
+    private var mShortcutManager:ShortcutManager? = null
+    private var activityMain = this
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         //颜色主题
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
-        themeActived = sharedPreferences.getInt("theme", R.style.SunnyWeather)
+        autoDark = sharedPreferences.getBoolean("autoDark", true)
+        if (autoDark) {
+            if(SunnyWeatherApplication.isNightMode(this)){
+                themeActived = R.style.nightTheme
+                sharedPreferences.edit().putInt("theme", themeActived).commit()
+            } else {
+                themeActived = R.style.SunnyWeather
+                sharedPreferences.edit().putInt("theme", themeActived).commit()
+            }
+        } else {
+            themeActived = sharedPreferences.getInt("theme", R.style.SunnyWeather)
+        }
         setTheme(themeActived)
         setContentView(R.layout.activity_main)
+        drawer_dark_switch.isChecked = (themeActived == R.style.nightTheme)
+        BarUtils.addMarginTopEqualStatusBarHeight(drawer_nick)
         BarUtils.transparentStatusBar(this)
-        BarUtils.addMarginTopEqualStatusBarHeight(main_container)
-        var nightChecked: Boolean
-        if (themeActived != R.style.nightTheme) {
-            nightChecked = false
-            BarUtils.setStatusBarLightMode(this, true)
-            BarUtils.setStatusBarColor(this, resources.getColor(R.color.colorPrimary))
-        } else {
-            nightChecked = true
-            BarUtils.setStatusBarLightMode(this, false)
-            BarUtils.setStatusBarColor(this, resources.getColor(R.color.colorPrimary_night))
-        }
+        BarUtils.setStatusBarLightMode(this, themeActived != R.style.nightTheme)
         setSupportActionBar(main_toolBar)
         initLogin()
+        areaPopup = AreaPopup(this)
         supportActionBar?.let {
             it.setDisplayHomeAsUpEnabled(true)
             it.setHomeAsUpIndicator(R.drawable.icon_menu)
             it.setDisplayShowTitleEnabled(false)
         }
 
-        val nightChangeListener = object : OnCheckedChangeListener {
-            override fun onCheckedChanged(drawerItem: IDrawerItem<*>, buttonView: CompoundButton, isChecked: Boolean) {
-            if (isChecked) {
-                    sharedPreferences.edit().putInt("theme", R.style.nightTheme).commit()
-                    nightChecked = false
-                    recreate()
-                } else {
-                    sharedPreferences.edit().putInt("theme", R.style.SunnyWeather).commit()
-                    nightChecked = true
-                    recreate()
+        //Drawer
+        drawer_dark_switch.setOnCheckedChangeListener { _, isChecked ->
+            if(isChecked){
+                sharedPreferences.edit().putInt("theme", R.style.nightTheme).commit()
+                drawer_dark_switch.isChecked = true
+            } else {
+                sharedPreferences.edit().putInt("theme", R.style.SunnyWeather).commit()
+                drawer_dark_switch.isChecked = false
+            }
+            recreate()
+        }
+        drawer_dark_switch.setOnClickListener {
+            sharedPreferences.edit().putBoolean("autoDark",false).commit()
+        }
+        drawer_logout.setOnClickListener {
+            SunnyWeatherApplication.clearLoginInfo(this)
+            main_fragment.currentItem = 0
+        }
+        drawer_login.setOnClickListener {
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+        }
+        drawer_setting.setOnClickListener {
+            val intent = Intent(this, SettingActivity::class.java)
+            startActivity(intent)
+        }
+        drawer_support.setOnClickListener {
+            MaterialDialog(this).show {
+                customView(R.layout.dialog_donate)
+                var payPlatform = "zfb"
+                donate_cancel.setOnClickListener {
+                    dismiss()
+                }
+                donate_save_cancel.setOnClickListener {
+                    donate_contain.visibility = View.VISIBLE
+                    donate_pic_contain.visibility = View.GONE
+                }
+                donate_zfb.setOnClickListener {
+                    if (AlipayZeroSdk.hasInstalledAlipayClient(context)) {
+                        AlipayZeroSdk.startAlipayClient(activityMain, "fkx19479mrxqi6tzhgw0bd0")
+                    } else {
+                        payPlatform = "zfb"
+                        donate_pic.setImageDrawable(resources.getDrawable(R.drawable.zfb_pic))
+                        donate_contain.visibility = View.GONE
+                        donate_pic_contain.visibility = View.VISIBLE
+                        donate_save_zfb.visibility = View.VISIBLE
+                        donate_save_wx.visibility = View.INVISIBLE
+                    }
+                }
+                donate_wx.setOnClickListener {
+                    payPlatform = "wx"
+                    donate_pic.setImageDrawable(resources.getDrawable(R.drawable.wx_pic))
+                    donate_contain.visibility = View.GONE
+                    donate_pic_contain.visibility = View.VISIBLE
+                    donate_save_zfb.visibility = View.INVISIBLE
+                    donate_save_wx.visibility = View.VISIBLE
+                }
+                donate_save_zfb.setOnClickListener {
+                    ImageUtils.save2Album(ImageUtils.drawable2Bitmap(resources.getDrawable(R.drawable.zfb_pic)),Bitmap.CompressFormat.JPEG)
+                    ToastUtils.showLong("二维码已保存到相册,请打开支付宝扫码使用")
+                }
+                donate_save_wx.setOnClickListener {
+                    ImageUtils.save2Album(ImageUtils.drawable2Bitmap(resources.getDrawable(R.drawable.wx_pic)),Bitmap.CompressFormat.JPEG)
+                    ToastUtils.showLong("二维码已保存到相册,请打开微信扫码使用")
                 }
             }
         }
-        //if you want to update the items at a later time it is recommended to keep it in a variable
-//        AccountHeaderView(this).apply {
-//            attachToSliderView(slider) // attach to the slider
-//            addProfiles(
-//                ProfileDrawerItem().apply { nameText = "Hi"; descriptionText = "mikepenz@gmail.com"; identifier = 102 }
-//            )
-//            withSavedInstance(savedInstanceState)
-//        }
-        // get the reference to the slider and add the items
-        slider.itemAdapter.add(
-            SecondaryDrawerItem().apply { identifier = 3; nameRes = R.string.setting; iconicsIcon = GoogleMaterial.Icon.gmd_settings; isSelectable = false},
-            SwitchDrawerItem().apply { nameText = "夜间模式"; iconicsIcon = GoogleMaterial.Icon.gmd_brightness_4;
-                onCheckedChangeListener = nightChangeListener; isSelectable = false; isChecked = nightChecked},
-//            SecondaryDrawerItem().apply { identifier = 5; nameText = "关于"; iconicsIcon = GoogleMaterial.Icon.gmd_info; isSelectable = false},
-        )
-        // specify a click listener
-        slider.onDrawerItemClickListener = { v, drawerItem, position ->
-            // do something with the clicked item :D
-            var intent: Intent? = null
-            when {
-                drawerItem.identifier == 3L -> intent = Intent(this, SettingActivity::class.java)
-//                drawerItem.identifier == 2L -> {
-//                    AlipayZeroSdk.startAlipayClient(this, "fkx16754nnauj1auovtgd7a")
-//                }
-//                drawerItem.identifier == 5L -> intent = Intent(this, AboutActivity::class.java)
-            }
-            if (intent != null) {
-                this.startActivity(intent)
-            }
-            false
+        drawer_report.setOnClickListener {
+            val intent = Intent(this, AboutActvity::class.java)
+            startActivity(intent)
         }
-
 
         //ViewPager2
         viewPager = main_fragment
@@ -208,16 +244,26 @@ class MainActivity : AppCompatActivity(), AreaSingleFragment.FragmentListener {
         }
         //标题栏的标题click事件
         main_toolBar_title.setOnClickListener {
-            val fragmentManager = supportFragmentManager
-            areaFragment = AreaFragment()
-            areaFragment.show(fragmentManager, "areaFragment")
+            areaPopup = AreaPopup(this)
+            XPopup.Builder(this)
+                .isDestroyOnDismiss(true)
+                .autoFocusEditText(false)
+                .moveUpToKeyboard(false)
+                .popupHeight(ScreenUtils.getAppScreenHeight() * 4 / 5)
+                .isViewMode(true)
+                .asCustom(areaPopup)
+                .show();
         }
+
+        //动态创建shortcuts
+        createDynamicShortcut(themeActived)
     }
 
     override fun onResume() {
         super.onResume()
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
         val newTheme = sharedPreferences.getInt("theme", R.style.SunnyWeather)
+        drawer_dark_switch.isChecked = (themeActived == R.style.nightTheme)
         if (newTheme != themeActived){
             recreate()
         }
@@ -230,11 +276,15 @@ class MainActivity : AppCompatActivity(), AreaSingleFragment.FragmentListener {
         mMenu = menu
         SunnyWeatherApplication.isLogin.observe(this, {result ->
             if (result) {
-                mMenu.findItem(R.id.toolbar_login).isVisible = false
-                mMenu.findItem(R.id.toolbar_logout).isVisible = true
+                drawer_nick.text = SunnyWeatherApplication.userInfo?.nickName
+                drawer_username.text = SunnyWeatherApplication.userInfo?.userName
+                drawer_logout.visibility = View.VISIBLE
+                drawer_login.visibility = View.INVISIBLE
             } else {
-                mMenu.findItem(R.id.toolbar_login).isVisible = true
-                mMenu.findItem(R.id.toolbar_logout).isVisible = false
+                drawer_nick.text = "未登录"
+                drawer_username.text = ""
+                drawer_logout.visibility = View.INVISIBLE
+                drawer_login.visibility = View.VISIBLE
             }
         })
         return true
@@ -247,14 +297,6 @@ class MainActivity : AppCompatActivity(), AreaSingleFragment.FragmentListener {
                 val intent = Intent(this, SearchActivity::class.java)
                 startActivity(intent)
             }
-            R.id.toolbar_login -> {
-                val intent = Intent(this, LoginActivity::class.java)
-                startActivity(intent)
-            }
-            R.id.toolbar_logout -> {
-                SunnyWeatherApplication.clearLoginInfo(this)
-                main_fragment.currentItem = 0
-            }
         }
         return true
     }
@@ -262,8 +304,8 @@ class MainActivity : AppCompatActivity(), AreaSingleFragment.FragmentListener {
     override fun onFragment(areaType: String, areaName:String) {
         main_toolBar_title.text = areaName
         SunnyWeatherApplication.areaType.value = areaType
-        SunnyWeatherApplication.areaName.value = areaName
-        areaFragment.dismiss()
+        SunnyWeatherApplication.areaName.value = if (areaName == "全部推荐") "all" else areaName
+        areaPopup.dismiss()
     }
 
     private inner class ScreenSlidePagerAdapter(fa: FragmentActivity) : FragmentStateAdapter(fa) {
@@ -277,6 +319,50 @@ class MainActivity : AppCompatActivity(), AreaSingleFragment.FragmentListener {
     }
     fun toFirst(){
         viewPager.currentItem = 0
+    }
+
+    /**
+     * 动态创建shortcuts
+     * 设置,搜索
+     */
+    @TargetApi(Build.VERSION_CODES.N_MR1)
+    private fun createDynamicShortcut(themeActived:Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            if (mShortcutManager == null) {
+                mShortcutManager = getSystemService(ShortcutManager::class.java)
+            }
+
+            //设置
+            val settingIntent = Intent(this, SettingActivity::class.java)
+            settingIntent.action = "android.intent.action.VIEW"
+            val settingIcon:Icon = if (themeActived != R.style.nightTheme) {
+                Icon.createWithResource(this, R.drawable.shortcut_settings_24)
+            }else{
+                Icon.createWithResource(this, R.drawable.shortcut_settings_night_24)
+            }
+            val settingShortcut = ShortcutInfo.Builder(this, "setting")
+                .setIcon(settingIcon)
+                .setShortLabel(getString(R.string.shortcuts_setting))
+                .setLongLabel(getString(R.string.shortcuts_setting))
+                .setIntent(settingIntent)
+                .build()
+
+            //搜索
+            val searchIntent = Intent(this, SearchActivity::class.java)
+            searchIntent.action = "android.intent.action.VIEW"
+            val searchIcon:Icon = if (themeActived != R.style.nightTheme) {
+                Icon.createWithResource(this, R.drawable.shortcut_search)
+            }else{
+                Icon.createWithResource(this, R.drawable.shortcut_search_night)
+            }
+            val searchShortcut = ShortcutInfo.Builder(this, "search")
+                .setIcon(searchIcon)
+                .setShortLabel(getString(R.string.shortcuts_search))
+                .setLongLabel(getString(R.string.shortcuts_search))
+                .setIntent(searchIntent)
+                .build()
+            mShortcutManager!!.dynamicShortcuts = arrayOf(settingShortcut,searchShortcut).toMutableList()
+        }
     }
 
     private fun initLogin(){

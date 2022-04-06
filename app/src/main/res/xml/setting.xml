@@ -41,6 +41,9 @@
             app:key="dayNight"
             app:icon="@drawable/ic_baseline_brightness_medium_24"
             app:title="深色主题"/>
+        <SwitchPreferenceCompat
+            app:key="autoDark"
+            app:title="深色跟随系统"/>
         <ListPreference
             app:key="start_page"
             app:title="启动时进入界面"
@@ -57,6 +60,10 @@
             android:icon="@drawable/ic_baseline_system_update_24"
             app:summary="111"
             android:title="版本检查"/>
+        <Preference
+            android:key="donate"
+            android:icon="@drawable/ic_baseline_insert_emoticon_24"
+            android:title="支持作者"/>
         <Preference
             android:key="about_activity"
             android:icon="@drawable/ic_baseline_info_24"

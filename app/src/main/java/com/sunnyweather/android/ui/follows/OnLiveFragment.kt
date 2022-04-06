@@ -34,6 +34,9 @@ class OnLiveFragment(private val isLive: Boolean) : Fragment() {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
+        if (!viewModel.inited) {
+            viewModel.isLive = this.isLive
+        }
         var cardNum = ScreenUtils.getAppScreenWidth()/ ConvertUtils.dp2px(195F)
         if (cardNum < 2) cardNum = 2
         val layoutManager = GridLayoutManager(context, cardNum)
@@ -50,14 +53,19 @@ class OnLiveFragment(private val isLive: Boolean) : Fragment() {
                 refresh_home.finishLoadMoreWithNoMoreData()
                 return@setOnRefreshListener
             }
+            viewModel.clearRoomList()
             viewModel.getRoomsOn(SunnyWeatherApplication.userInfo?.uid)
         }
 
         SunnyWeatherApplication.isLogin.observe(viewLifecycleOwner, {result ->
-            if (result){
+            if (!viewModel.inited && result){
+                viewModel.inited = true
                 progressBar_roomList.isVisible = true
+                viewModel.clearRoomList()
+                adapterOn.notifyDataSetChanged()
                 viewModel.getRoomsOn(SunnyWeatherApplication.userInfo?.uid)
-            } else {
+            } else if (!result){
+                viewModel.inited = false
                 viewModel.clearRoomList()
                 adapterOn.notifyDataSetChanged()
             }
@@ -78,7 +86,6 @@ class OnLiveFragment(private val isLive: Boolean) : Fragment() {
             }
         })
 
-        viewModel.getRoomsOn(SunnyWeatherApplication.userInfo?.uid)
         if (SunnyWeatherApplication.isLogin.value!!){
             progressBar_roomList.isVisible = true
         }
@@ -92,7 +99,7 @@ class OnLiveFragment(private val isLive: Boolean) : Fragment() {
 
     private fun sortRooms(roomList: List<RoomInfo>) {
         for (roomInfo in roomList) {
-            if (this.isLive == (roomInfo.isLive == 1) && !roomInfo.roomName.isNullOrEmpty()) {
+            if (viewModel.isLive == (roomInfo.isLive == 1) && !roomInfo.ownerName.isNullOrEmpty()) {
                 viewModel.roomList.add(roomInfo)
             }
         }

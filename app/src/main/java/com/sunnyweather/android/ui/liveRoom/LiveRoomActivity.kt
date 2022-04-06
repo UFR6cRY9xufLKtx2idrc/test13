@@ -104,7 +104,19 @@ class LiveRoomActivity : AppCompatActivity(), Utils.OnAppStatusChangedListener, 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
-        var theme = sharedPreferences.getInt("theme", R.style.SunnyWeather)
+        var theme: Int
+        val autoDark = sharedPreferences.getBoolean("autoDark", true)
+        if (autoDark) {
+            if(SunnyWeatherApplication.isNightMode(this)){
+                theme = R.style.nightTheme
+                sharedPreferences.edit().putInt("theme", theme).commit()
+            } else {
+                theme = R.style.SunnyWeather
+                sharedPreferences.edit().putInt("theme", theme).commit()
+            }
+        } else {
+            theme = sharedPreferences.getInt("theme", R.style.SunnyWeather)
+        }
         setTheme(theme)
         setContentView(R.layout.activity_liveroom)
         val playBackGround = sharedPreferences.getBoolean("play_background", false)
@@ -335,10 +347,6 @@ class LiveRoomActivity : AppCompatActivity(), Utils.OnAppStatusChangedListener, 
                         danmu_not_support.visibility = View.VISIBLE
                         danmu_not_support.text = "暂不支持${SunnyWeatherApplication.platformName(roomInfo.platForm)}弹幕"
                     }
-                    if (roomInfo.platForm == "huya" && DeviceUtils.getSDKVersionCode() < 26) {
-                        danmu_not_support.visibility = View.VISIBLE
-                        danmu_not_support.text = "安卓8.0以下暂时不支持虎牙弹幕"
-                    }
                     //未开播
                     if (roomInfo.isLive == 0) {
                         liveRoom_not_live.visibility = View.VISIBLE
@@ -448,13 +456,12 @@ class LiveRoomActivity : AppCompatActivity(), Utils.OnAppStatusChangedListener, 
         }
         viewModel.getRoomInfo(uid, platform, roomId)
         if (!isFirstGetInfo && !viewModel.isConnecting()) {
-            viewModel.startDanmu(platform, roomId, SunnyWeatherApplication.userInfo!!.selectedContent, SunnyWeatherApplication.userInfo!!.isActived == "1")
+            viewModel.startDanmu(platform, roomId, SunnyWeatherApplication.userInfo?.selectedContent, SunnyWeatherApplication.userInfo?.isActived == "1")
         }
         mPIPManager.resume()
     }
 
     override fun onBackPressed() {
-        viewModel.stopDanmu()
         if (mPIPManager.onBackPress()) return
         val playBackGround = sharedPreferences.getBoolean("play_background", false)
         val backTiny = sharedPreferences.getBoolean("tiny_when_back", false)
@@ -465,6 +472,7 @@ class LiveRoomActivity : AppCompatActivity(), Utils.OnAppStatusChangedListener, 
             startFloatWindow()
             return
         }
+        viewModel.stopDanmu()
         super.onBackPressed()
     }
 
@@ -691,9 +699,9 @@ class LiveRoomActivity : AppCompatActivity(), Utils.OnAppStatusChangedListener, 
         viewModel.danmuList.clear()
         scopeNetLife { // 创建作用域
             val userInfo = SunnyWeatherApplication.userInfo
-            val url = "https://yj1211.work:8014/api/live/getRoomInfo?uid=" + userInfo!!.uid + "&platform=" + platform + "&roomId=" + roomId
+            val url = "http://yj1211.work:8013/api/live/getRoomInfo?uid=" + userInfo!!.uid + "&platform=" + platform + "&roomId=" + roomId
             val realUrl =
-                "https://yj1211.work:8014/api/live/getRealUrl?platform=$platform&roomId=$roomId"
+                "http://yj1211.work:8013/api/live/getRealUrl?platform=$platform&roomId=$roomId"
             val data = Get<String>(url) // 发起GET请求并返回`String`类型数据
             val realUrlData = Get<String>(realUrl)
             var result: JSONObject = JSONObject.parseObject(data.await()).getJSONObject("data")
@@ -739,6 +747,49 @@ class LiveRoomActivity : AppCompatActivity(), Utils.OnAppStatusChangedListener, 
                         }
                     }
                 }
+            }
+        }
+    }
+
+    fun refreshUrl() {
+        scopeNetLife { // 创建作用域
+            val realUrl =
+                "http://yj1211.work:8013/api/live/getRealUrl?platform=$platform&roomId=$roomId"
+            val realUrlData = Get<String>(realUrl)
+            var realUrlResult: JSONObject = JSONObject.parseObject(realUrlData.await()).getJSONObject("data")
+            val urls: LinkedTreeMap<String, String> = getRealUrls(realUrlResult)
+            if (urls != null && urls.size > 0) {
+                val isMobileData = NetworkUtils.isMobileData()
+                if (isMobileData) {
+                    val defaultDefinition = sharedPreferences.getString("default_definition_4G", "原画")
+                    if (urls.containsKey(defaultDefinition)) {
+                        mDefinitionControlView?.setData(urls, defaultDefinition)
+                        onRateChange(urls[defaultDefinition]) //设置视频地址
+                    } else {
+                        for (item in definitionArray) {
+                            if (urls.containsKey(item)) {
+                                mDefinitionControlView?.setData(urls, item)
+                                onRateChange(urls[item]) //设置视频地址
+                                break
+                            }
+                        }
+                    }
+                } else {
+                    val defaultDefinition = sharedPreferences.getString("default_definition_wifi", "原画")
+                    if (urls.containsKey(defaultDefinition)) {
+                        mDefinitionControlView?.setData(urls, defaultDefinition)
+                        onRateChange(urls[defaultDefinition]) //设置视频地址
+                    } else {
+                        for (item in definitionArray) {
+                            if (urls.containsKey(item)) {
+                                mDefinitionControlView?.setData(urls, item)
+                                onRateChange(urls[item])
+                                break
+                            }
+                        }
+                    }
+                }
+
             }
         }
     }

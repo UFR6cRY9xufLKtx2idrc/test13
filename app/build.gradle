@@ -107,7 +107,7 @@ dependencies {
     implementation "com.mikepenz:materialdrawer:9.0.1" //抽屉
     implementation 'com.afollestad.material-dialogs:core:3.3.0' //dialog
     implementation "com.mikepenz:materialdrawer:9.0.1" // material drawer
-    implementation "com.mikepenz:materialdrawer-iconics:8.4.5" // material drawer 图标
+    implementation "com.mikepenz:materialdrawer-iconics:9.0.1" // material drawer 图标
     implementation 'com.mikepenz:google-material-typeface:4.0.0.2-kotlin@aar' //Google Material Icons
     implementation 'com.github.li-xiaojun:XPopup:2.7.5' //弹出框
     implementation 'com.contrarywind:wheelview:4.1.0' //滚动选择

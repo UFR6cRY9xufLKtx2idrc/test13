@@ -104,9 +104,9 @@ dependencies {
     implementation 'com.umeng.umsdk:apm:1.8.0' // 错误分析升级为独立SDK，看crash数据请一定集成，可选
     implementation 'com.github.getActivity:XXPermissions:12.3' //浮窗权限申请
     implementation 'com.blankj:utilcodex:1.31.1' //安卓常用工具
-    implementation "com.mikepenz:materialdrawer:8.4.4" //抽屉
+    implementation "com.mikepenz:materialdrawer:9.0.1" //抽屉
     implementation 'com.afollestad.material-dialogs:core:3.3.0' //dialog
-    implementation "com.mikepenz:materialdrawer:8.4.5" // material drawer
+    implementation "com.mikepenz:materialdrawer:9.0.1" // material drawer
     implementation "com.mikepenz:materialdrawer-iconics:8.4.5" // material drawer 图标
     implementation 'com.mikepenz:google-material-typeface:4.0.0.2-kotlin@aar' //Google Material Icons
     implementation 'com.github.li-xiaojun:XPopup:2.7.5' //弹出框

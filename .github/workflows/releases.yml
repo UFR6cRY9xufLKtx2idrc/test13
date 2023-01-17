@@ -35,11 +35,19 @@ jobs:
         run: |
           echo "y" | sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;25.1.8937393" --sdk_root=${ANDROID_SDK_ROOT}
 
+      - uses: gradle/wrapper-validation-action@v1
+      - run: chmod +x ./gradlew
+
       - name: Gradle Build
         uses: gradle/gradle-build-action@v2
         with:
           arguments: assembleRelease
           gradle-home-cache-cleanup: true
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: justlive-${{ env.ASSET_NAME }}
+          path: app/build/outputs/apk/release/app-release.apk
 
       - name: Releases
         uses: softprops/action-gh-release@v1

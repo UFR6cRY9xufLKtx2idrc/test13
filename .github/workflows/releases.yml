@@ -44,15 +44,21 @@ jobs:
           arguments: assembleRelease
           gradle-home-cache-cleanup: true
 
+      - name: Create 7z Release
+        uses: DuckSoft/create-7z-action@v1.0
+        with:
+          pathSource: ./app/build/outputs/apk/
+          pathTarget: ./release.7z
+
       - name: Uploading Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: justlive-${{ env.ASSET_NAME }}
-          path: ./app/build/outputs/apk/release/app-release.apk
+          name: my-build-apk.7z
+          path: release.7z
 
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
           body: Bump Version
           files: |
-            ./app/build/outputs/apk/release/app-release.apk
+            release.7z

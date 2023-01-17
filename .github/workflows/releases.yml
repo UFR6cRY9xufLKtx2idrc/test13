@@ -44,14 +44,15 @@ jobs:
           arguments: assembleRelease
           gradle-home-cache-cleanup: true
 
-      - uses: actions/upload-artifact@v3
+      - name: Uploading Artifact
+        uses: actions/upload-artifact@v3
         with:
           name: justlive-${{ env.ASSET_NAME }}
-          path: app/build/outputs/apk/release/app-release.apk
+          path: ./app/build/outputs/apk/release/app-release.apk
 
       - name: Releases
         uses: softprops/action-gh-release@v1
         with:
           body: Bump Version
           files: |
-            app/build/outputs/apk/release/app-release.apk
+            ./app/build/outputs/apk/release/app-release.apk

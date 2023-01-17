@@ -23,19 +23,23 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: 11
           check-latest: true
 
+      - name: Install latest build tools
+        run: |
+          echo "y" | sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "build-tools;33.0.1" --sdk_root=${ANDROID_SDK_ROOT}
+
       - name: Install NDK
         run: |
-          echo "y" | sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;25.1.8937393" --sdk_root=${ANDROID_SDK_ROOT} &> /dev/null
+          echo "y" | sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;25.1.8937393" --sdk_root=${ANDROID_SDK_ROOT}
 
       - name: Gradle Build
         uses: gradle/gradle-build-action@v2
         with:
-          gradle-home-cache-cleanup: true
           arguments: assembleRelease
+          gradle-home-cache-cleanup: true
 
       - name: Releases
         uses: softprops/action-gh-release@v1

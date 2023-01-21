@@ -102,7 +102,7 @@ public class DanmuUtils {
         Map<String, Object> map = getWebSocketJwtParamsMap(appId,secret,roomId);
 
         StringBuffer urlBuffer = new StringBuffer();
-        urlBuffer.append("ws://ws-apiext.huya.com/index.html").append(MapToUrlString(map));
+        urlBuffer.append("wss://ws-apiext.huya.com/index.html").append(MapToUrlString(map));
         return urlBuffer.toString();
     }
     //虎牙处理收到消息
